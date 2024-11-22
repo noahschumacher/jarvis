@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Price and RSI Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.3.0"></script>
+
+</head>
+
+<body>
+  <h3>Price Chart</h3>
+  <canvas id="priceChart" width="800" height="120"></canvas>
+  <h3>Buy/Sell Chart</h3>
+  <canvas id="buySellChart" width="800" height="120"></canvas>
+  <h3>RSI Chart</h3>
+  <canvas id="rsiChart" width="800" height="120"></canvas>
+  <h3>Momentum Chart</h3>
+  <canvas id="momentumChart" width="800" height="120"></canvas>
+
+  <script>
+    // Price Chart
+    const priceCtx = document.getElementById('priceChart').getContext('2d');
+    const priceChart = new Chart(priceCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Price",
+            data: [],
+            borderColor: 'blue',
+            fill: false,
+          },
+          {
+            label: "Buy/Sell",
+            data: [], // For buy/sell markers
+            pointBackgroundColor: function (context) {
+              const index = context.dataIndex; // Get the current index in the dataset
+              const dataPoint = context.dataset.data[index]; // Get the current data point
+              const action = dataPoint ? dataPoint.marker : undefined; // Check if marker exists
+
+              // Return color based on the action (buy/sell), or transparent if no action
+              if (action === 'buy') {
+                return 'green';
+              } else if (action === 'sell') {
+                return 'red';
+              } else {
+                return 'transparent'; // If no marker or action
+              }
+            },
+            pointRadius: 8, // Adjust marker size
+            pointHitRadius: 10,
+            showLine: false, // Do not connect the points
+          },
+        ],
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'time', // If you want a time-based X-axis
+          },
+          y: {
+            beginAtZero: false,
+          },
+        },
+      },
+    });
+
+    // buy/sell Chart
+    const buysellCtx = document.getElementById('buySellChart').getContext('2d');
+    const buysellChart = new Chart(buysellCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'BuySignal',
+            data: [],
+            borderColor: 'green',
+            fill: false,
+          },
+          {
+            label: 'SellSignal',
+            data: [],
+            borderColor: 'red',
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'second'
+            }
+          },
+          y: {
+            beginAtZero: true,
+            max: 120,
+            min: 0,
+          }
+        },
+        plugins: {
+          annotation: {
+            annotations: [
+              {
+                type: 'box',
+                yMin: 90,
+                yMax: 120,
+                backgroundColor: 'rgba(75, 192, 192, 0.25)',
+                borderWidth: 0
+              }
+            ]
+          }
+        }
+      }
+    });
+
+    // RSI Chart
+    const rsiCtx = document.getElementById('rsiChart').getContext('2d');
+    const rsiChart = new Chart(rsiCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'RSI',
+            data: [],
+            borderColor: 'red',
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'second'
+            }
+          },
+          y: {
+            beginAtZero: true,
+            max: 100,
+            min: 0,
+            // Shading regions below 30 and above 70
+            ticks: {
+              callback: function (value) {
+                if (value === 30) {
+                  return 'Buy';
+                } else if (value === 70) {
+                  return 'Sell';
+                }
+                return value;
+              }
+            }
+          }
+        },
+        plugins: {
+          annotation: {
+            annotations: [
+              {
+                type: 'box',
+                yMin: 0,
+                yMax: 30,
+                backgroundColor: 'rgba(255, 99, 132, 0.25)',
+                borderWidth: 0
+              },
+              {
+                type: 'box',
+                yMin: 70,
+                yMax: 100,
+                backgroundColor: 'rgba(75, 192, 192, 0.25)',
+                borderWidth: 0
+              }
+            ]
+          }
+        }
+      }
+    });
+
+    const momentumCtx = document.getElementById('momentumChart').getContext('2d');
+    const momentumChart = new Chart(momentumCtx, {
+      type: 'line',
+      data: {
+        labels: [], // Timestamps or intervals
+        datasets: [
+          {
+            label: "Short Momentum",
+            data: [],
+            borderColor: 'green',
+            fill: false,
+          },
+          {
+            label: "Long Momentum",
+            data: [],
+            borderColor: 'purple',
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'time',
+          },
+          y: {
+            beginAtZero: false,
+          },
+        },
+      },
+    });
+
+    function updateCharts(time, price, rsi, shortMoment, longMoment, buySignal, sellSignal, action) {
+      priceChart.data.labels.push(time);
+      priceChart.data.datasets[0].data.push(price);
+      rsiChart.data.labels.push(time);
+      rsiChart.data.datasets[0].data.push(rsi);
+
+      // Handle buy/sell markers
+      if (action === "BUY") {
+        priceChart.data.datasets[1].data.push({ x: time, y: price, marker: 'buy' });
+      } else if (action === "SELL") {
+        priceChart.data.datasets[1].data.push({ x: time, y: price, marker: 'sell' });
+      } else {
+        priceChart.data.datasets[1].data.push({ x: time, y: price, marker: 'none' });
+      }
+
+      momentumChart.data.labels.push(time);
+      momentumChart.data.datasets[0].data.push(shortMoment);
+      momentumChart.data.datasets[1].data.push(longMoment);
+
+      buysellChart.data.datasets[0].data.push({ x: time, y: buySignal });
+      buysellChart.data.datasets[1].data.push({ x: time, y: sellSignal });
+
+      priceChart.update();
+      buysellChart.update();
+      rsiChart.update();
+      momentumChart.update();
+    }
+
+
+    // Simulated real-time data update
+    const eventSource = new EventSource('/events');
+
+    eventSource.onmessage = function (event) {
+      const data = JSON.parse(event.data);
+      updateCharts(
+        new Date(),
+        data.price,
+        data.rsi,
+        data.shortMomentum,
+        data.longMomentum,
+        data.buySignal,
+        data.sellSignal,
+        data.action,
+      );
+    };
+  </script>
+</body>
+
+</html>
